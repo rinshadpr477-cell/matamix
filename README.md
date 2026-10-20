@@ -71,18 +71,64 @@ Rather than an overcrowded single view, TaskFlow organizes user workflows into 5
 
 ## 🏛 Architecture & Key Engineering Decisions
 
-- **Layered Backend Architecture**:
-  - `Routes`: Map HTTP methods, attach strict validation middleware, and apply rate limiting.
-  - `Validators`: Zod schemas parse and bound input constraints (e.g. 1–200 character titles, valid 24-character hexadecimal ObjectIds).
-  - `Controllers`: Manage HTTP status codes and responses.
-  - `Services`: Domain logic, query bounds (`limit: 100`, `max: 200`), atomic operations, and DTO formatting.
-  - `Models`: Mongoose schema with optimized indexes on `{ createdAt: -1 }` and `{ completed: 1 }`.
-  - `Centralized Error Handler`: Maps known Mongoose `CastError`, `ValidationError`, and JSON parsing errors into clean client responses while concealing internal stacks in production.
+TaskFlow is engineered using a **Clean Layered Architecture** with strict separation of concerns, defensive validation, and full-stack type safety across both frontend and backend.
 
-- **Component-Driven State Management**:
-  - Custom `useTasks` hook manages tasks, active IDs, per-item pending loaders, and error propagation.
-  - Native Fetch wrapper (`apiClient`) with a 10-second `AbortController` timeout and unified error handling.
-  - UI updates commit upon verified HTTP responses to guarantee client-database consistency.
+```
+                    ┌────────────────────────────────────────────────────────┐
+                    │               CLIENT (React + Vite + TS)               │
+                    │                                                        │
+                    │   DashboardView │ TaskBoard │ HistoryView │ HealthView │
+                    │   ───────────────────────────────────────────────────  │
+                    │            useTasks Hook (State Encapsulation)         │
+                    │   ───────────────────────────────────────────────────  │
+                    │           taskService & apiClient (Fetch + Timeout)    │
+                    └───────────────────────────┬────────────────────────────┘
+                                                │ REST (JSON over HTTP)
+                                                ▼
+                    ┌────────────────────────────────────────────────────────┐
+                    │               SERVER (Express + Node + TS)             │
+                    │                                                        │
+                    │  [Middleware Pipeline]                                 │
+                    │  Helmet ──▶ CORS ──▶ RateLimiter ──▶ JSON Parser (100k) │
+                    │                                                        │
+                    │  [Routing Layer]        task.routes / health.routes     │
+                    │                                                        │
+                    │  [Validation Layer]     Zod Schemas (Body/Params/Query) │
+                    │                                                        │
+                    │  [Controller Layer]     task.controller.ts (HTTP/DTOs)  │
+                    │                                                        │
+                    │  [Service Layer]        task.service.ts (Domain Logic)  │
+                    │                                                        │
+                    │  [Data Layer]           Mongoose TaskModel (Indexes)    │
+                    │                                                        │
+                    │  [Error Pipeline]       Centralized Error Handler       │
+                    └───────────────────────────┬────────────────────────────┘
+                                                │ Mongoose TCP Driver
+                                                ▼
+                                    ┌───────────────────────┐
+                                    │   MongoDB Database    │
+                                    └───────────────────────┘
+```
+
+### 1. Backend: Clean Layered Architecture (Controller-Service-Model)
+The server strictly isolates transport concerns from business rules and persistence across 5 decoupled layers:
+
+- **Routing Layer (`task.routes.ts`, `health.routes.ts`)**: Defines REST resources, binds HTTP verbs (`GET`, `POST`, `PATCH`, `DELETE`), and attaches middleware.
+- **Validation Gatekeeper Layer (`validateRequest.ts`, `task.validator.ts`)**: Powered by **Zod**. Enforces strict runtime schemas on request bodies, URL params (`:id`), and query strings (`?limit=&search=`) *before* controllers execute, eliminating Mass Assignment and injection attacks.
+- **Controller Layer (`task.controller.ts`)**: HTTP orchestrator setting status codes (`200 OK`, `201 Created`, `400 Bad Request`, `404 Not Found`) and wrapping data in uniform JSON response envelopes.
+- **Service / Domain Layer (`task.service.ts`)**: Encapsulates all business logic. Fully independent of Express `req`/`res`, enabling seamless reuse and isolated testing. Implements **Atomic Database Operations** (`$set: { completed: { $not: '$completed' } }` and `deleteMany`) to prevent concurrent race conditions.
+- **Persistence Layer (`task.model.ts`)**: Mongoose model with schema-level validation and compound indexes on `{ createdAt: -1 }` and `{ completed: 1 }`. Implements the **DTO (Data Transfer Object) Pattern** via `toJSON` transforms, stripping internal MongoDB metadata (`_id`, `__v`) and standardizing output format.
+- **Centralized Error Pipeline (`errorHandler.ts`)**: Intercepts operational errors (`AppError`), Mongoose `CastError`, `ValidationError`, and JSON parsing errors. Automatically masks 500 error stack traces in production to prevent information disclosure.
+
+### 2. Frontend: Component-Driven Architecture (CDA) & Unidirectional Data Flow
+- **Unidirectional State Flow (`useTasks.ts`)**: Custom hook managing tasks, loading spinners, active item IDs, and action errors. UI mutations commit only after verified HTTP 200/201 responses from the API, eliminating optimistic state desynchronization.
+- **Service Abstraction Layer (`apiClient.ts`, `taskService.ts`)**: Native Fetch abstraction injecting headers, enforcing a 10-second `AbortController` timeout, and normalizing network failures into structured `ApiError` instances.
+- **Multi-Page Layout (`App.tsx`, `Sidebar.tsx`, `TopHeader.tsx`)**: Modular layout providing dedicated views (`DashboardView`, `TaskBoard`, `HistoryView`, `SystemHealthView`, `SettingsView`) with responsive mobile drawers and sticky headers.
+
+### 3. Data & Concurrency Patterns
+- **Atomic State Transitions**: Status toggles are executed directly inside MongoDB using atomic pipeline updates, preventing read-modify-write race conditions under concurrent requests.
+- **Atomic Bulk Purge**: Bulk clearing of completed tasks runs as a single `deleteMany` database command (`DELETE /api/tasks/completed`), preventing client-side network loops and rate limit exhaustion.
+- **Formula Injection Defense (CWE-1236)**: User task titles exported to CSV are sanitized by escaping formula triggers (`=`, `+`, `-`, `@`, `\t`, `\r`) to protect spreadsheet consumers.
 
 ---
 
