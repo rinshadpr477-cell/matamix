@@ -139,6 +139,24 @@ export function useTasks() {
     }
   };
 
+  const purgeCompleted = async (): Promise<boolean> => {
+    setActionError(null);
+    try {
+      await taskService.purgeCompletedTasks();
+      if (isMountedRef.current) {
+        setTasks((prev) => prev.filter((t) => !t.completed));
+      }
+      return true;
+    } catch (err: unknown) {
+      if (isMountedRef.current) {
+        const message =
+          err instanceof ApiError ? err.message : 'Failed to purge completed tasks.';
+        setActionError(message);
+      }
+      return false;
+    }
+  };
+
   const clearActionError = () => {
     setActionError(null);
   };
@@ -155,6 +173,7 @@ export function useTasks() {
     addTask,
     toggleTask,
     deleteTask,
+    purgeCompleted,
     clearActionError,
   };
 }

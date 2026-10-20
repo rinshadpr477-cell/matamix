@@ -36,14 +36,24 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
   const completedCount = tasks.filter((t) => t.completed).length;
 
+  const sanitizeCSVField = (val: string): string => {
+    // Mitigate CSV Formula Injection (CWE-1236)
+    const formulaChars = ['=', '+', '-', '@', '\t', '\r'];
+    let safeVal = val;
+    if (formulaChars.some((char) => safeVal.startsWith(char))) {
+      safeVal = `'${safeVal}`;
+    }
+    return `"${safeVal.replace(/"/g, '""')}"`;
+  };
+
   const exportCSV = () => {
     const headers = ['ID', 'Title', 'Status', 'Created At', 'Updated At'];
     const rows = tasks.map((t) => [
-      `"${t.id}"`,
-      `"${t.title.replace(/"/g, '""')}"`,
-      t.completed ? 'Completed' : 'In Progress',
-      `"${t.createdAt}"`,
-      `"${t.updatedAt}"`,
+      sanitizeCSVField(t.id),
+      sanitizeCSVField(t.title),
+      t.completed ? '"Completed"' : '"In Progress"',
+      sanitizeCSVField(t.createdAt),
+      sanitizeCSVField(t.updatedAt),
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');

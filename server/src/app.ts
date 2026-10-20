@@ -26,8 +26,8 @@ export function createApp(): Express {
         // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
         if (!origin) return callback(null, true);
         if (hasWildcard) {
-          // If wildcard is configured, do not mirror origin for credentials
-          return callback(null, false);
+          // Allow all origins when wildcard is explicitly configured
+          return callback(null, true);
         }
         if (allowedOrigins.includes(origin)) {
           return callback(null, true);

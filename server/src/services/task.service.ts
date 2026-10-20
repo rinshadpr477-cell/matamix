@@ -30,13 +30,32 @@ export class TaskService {
   }
 
   /**
-   * Fetch tasks with bounded query limits and pagination support
+   * Fetch tasks with bounded query limits, search, and completion filters
    */
-  async getAllTasks(limit = 100, skip = 0): Promise<TaskResponseDTO[]> {
+  async getAllTasks(
+    limit = 100,
+    skip = 0,
+    search?: string,
+    completed?: string
+  ): Promise<TaskResponseDTO[]> {
     const safeLimit = Math.min(Math.max(limit, 1), 200);
     const safeSkip = Math.max(skip, 0);
 
-    const tasks = await TaskModel.find()
+    const filter: Record<string, unknown> = {};
+
+    if (completed === 'true') {
+      filter.completed = true;
+    } else if (completed === 'false') {
+      filter.completed = false;
+    }
+
+    if (search && search.trim()) {
+      // Escape special regex characters to prevent ReDoS
+      const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter.title = { $regex: escaped, $options: 'i' };
+    }
+
+    const tasks = await TaskModel.find(filter)
       .sort({ createdAt: -1 })
       .skip(safeSkip)
       .limit(safeLimit)
@@ -105,6 +124,17 @@ export class TaskService {
     return {
       id: task._id.toString(),
       message: 'Task deleted successfully',
+    };
+  }
+
+  /**
+   * Bulk purge all completed tasks in a single atomic database operation
+   */
+  async purgeCompletedTasks(): Promise<{ deletedCount: number; message: string }> {
+    const result = await TaskModel.deleteMany({ completed: true });
+    return {
+      deletedCount: result.deletedCount ?? 0,
+      message: `Successfully purged ${result.deletedCount ?? 0} completed tasks`,
     };
   }
 }

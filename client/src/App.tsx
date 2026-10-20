@@ -28,6 +28,7 @@ export const App: React.FC = () => {
     addTask,
     toggleTask,
     deleteTask,
+    purgeCompleted,
     clearActionError,
   } = useTasks();
 
@@ -192,6 +193,7 @@ export const App: React.FC = () => {
             <SettingsView
               tasks={tasks}
               onDelete={deleteTask}
+              onPurgeCompleted={purgeCompleted}
             />
           )}
         </main>

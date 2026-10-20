@@ -15,7 +15,11 @@ interface HealthData {
   status: string;
   uptime: number;
   timestamp: string;
-  services: {
+  database?: {
+    status: string;
+    readyState: number;
+  };
+  services?: {
     database: {
       status: string;
       readyState: number;
@@ -65,7 +69,9 @@ export const SystemHealthView: React.FC = () => {
     return `${Math.floor(seconds)}s`;
   };
 
-  const isDbConnected = health?.services?.database?.readyState === 1;
+  const readyState = health?.database?.readyState ?? health?.services?.database?.readyState ?? 0;
+  const isDbConnected = readyState === 1;
+  const isServerHealthy = health?.status === 'healthy' || health?.status === 'ok';
 
   const endpoints = [
     {
@@ -145,11 +151,11 @@ export const SystemHealthView: React.FC = () => {
           <div className="flex items-center gap-2">
             <span
               className={`w-2.5 h-2.5 rounded-full ${
-                health?.status === 'ok' ? 'bg-[#34A853]' : 'bg-rose-500'
+                isServerHealthy ? 'bg-[#34A853]' : 'bg-rose-500'
               }`}
             />
             <span className="text-lg font-bold text-slate-900">
-              {health?.status === 'ok' ? 'Operational' : error ? 'Degraded' : 'Checking...'}
+              {isServerHealthy ? 'Operational' : error ? 'Degraded' : 'Checking...'}
             </span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1">Port 5000 &bull; Node.js runtime</p>
@@ -174,7 +180,7 @@ export const SystemHealthView: React.FC = () => {
             </span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1">
-            Mongoose readyState: {health?.services?.database?.readyState ?? 0}
+            Mongoose readyState: {readyState}
           </p>
         </div>
 

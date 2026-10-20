@@ -35,6 +35,13 @@ router.patch(
   (req, res, next) => taskController.toggleTask(req, res, next)
 );
 
+// DELETE /api/tasks/completed - Atomically purge all completed tasks
+router.delete(
+  '/completed',
+  mutationLimiter,
+  (req, res, next) => taskController.purgeCompletedTasks(req, res, next)
+);
+
 // DELETE /api/tasks/:id - Remove task by id
 router.delete(
   '/:id',

@@ -15,7 +15,10 @@ export class TaskController {
     try {
       const limit = req.query.limit !== undefined ? Number(req.query.limit) : 100;
       const skip = req.query.skip !== undefined ? Number(req.query.skip) : 0;
-      const tasks = await taskService.getAllTasks(limit, skip);
+      const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+      const completed = typeof req.query.completed === 'string' ? req.query.completed : undefined;
+
+      const tasks = await taskService.getAllTasks(limit, skip, search, completed);
       res.status(200).json({
         success: true,
         data: tasks,
@@ -91,6 +94,27 @@ export class TaskController {
         success: true,
         data: result,
         message: 'Task deleted successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * DELETE /api/tasks/completed
+   * Atomically purge all completed tasks
+   */
+  async purgeCompletedTasks(
+    _req: Request,
+    res: Response<ApiResponse<{ deletedCount: number; message: string }>>,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await taskService.purgeCompletedTasks();
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: result.message,
       });
     } catch (error) {
       next(error);

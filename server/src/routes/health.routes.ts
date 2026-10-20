@@ -15,6 +15,12 @@ router.get('/', (_req: Request, res: Response) => {
       status: dbStatus,
       readyState: mongoose.connection.readyState,
     },
+    services: {
+      database: {
+        status: dbStatus,
+        readyState: mongoose.connection.readyState,
+      },
+    },
   });
 });
 

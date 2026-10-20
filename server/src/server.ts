@@ -20,7 +20,14 @@ async function bootstrap() {
     });
 
     // 4. Graceful shutdown handler
+    let isShuttingDown = false;
+
     const gracefulShutdown = async (signal: string) => {
+      if (isShuttingDown) {
+        console.log(`⚠️ Shutdown already in progress. Ignoring ${signal}.`);
+        return;
+      }
+      isShuttingDown = true;
       console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
 
       server.close(async (err) => {

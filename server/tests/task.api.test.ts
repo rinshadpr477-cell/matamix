@@ -60,6 +60,21 @@ describe('Task Manager REST API', () => {
       expect(response.body.data[1].title).toBe('Task 3');
     });
 
+    it('should filter tasks by search query and completion status', async () => {
+      await TaskModel.create({ title: 'Deploy frontend application', completed: false });
+      await TaskModel.create({ title: 'Deploy backend server', completed: true });
+      await TaskModel.create({ title: 'Write unit tests', completed: false });
+
+      // Search 'deploy' + completed='true'
+      const response = await request(app).get('/api/tasks?search=deploy&completed=true');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].title).toBe('Deploy backend server');
+      expect(response.body.data[0].completed).toBe(true);
+    });
+
     it('should reject invalid query parameters with 400 Bad Request', async () => {
       const response = await request(app).get('/api/tasks?limit=0');
       expect(response.status).toBe(400);
@@ -245,6 +260,23 @@ describe('Task Manager REST API', () => {
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
       expect(response.body.error).toContain('Invalid MongoDB ObjectId format');
+    });
+
+    it('should atomically purge only completed tasks via DELETE /api/tasks/completed', async () => {
+      await TaskModel.create({ title: 'Task to keep 1', completed: false });
+      await TaskModel.create({ title: 'Task to purge 1', completed: true });
+      await TaskModel.create({ title: 'Task to purge 2', completed: true });
+      await TaskModel.create({ title: 'Task to keep 2', completed: false });
+
+      const response = await request(app).delete('/api/tasks/completed');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.deletedCount).toBe(2);
+
+      const remaining = await TaskModel.find();
+      expect(remaining).toHaveLength(2);
+      expect(remaining.every((t) => !t.completed)).toBe(true);
     });
   });
 

@@ -31,6 +31,8 @@ export const getTasksQuerySchema = z
   .object({
     limit: z.coerce.number().int().min(1).max(200).default(100),
     skip: z.coerce.number().int().min(0).default(0),
+    search: z.string().trim().max(100).optional(),
+    completed: z.enum(['true', 'false', 'all']).optional(),
   })
   .strict();
 

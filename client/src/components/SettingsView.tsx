@@ -14,23 +14,40 @@ import { Task } from '../types/task';
 interface SettingsViewProps {
   tasks: Task[];
   onDelete: (id: string) => Promise<void>;
+  onPurgeCompleted?: () => Promise<boolean>;
 }
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ tasks, onDelete }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({
+  tasks,
+  onDelete,
+  onPurgeCompleted,
+}) => {
   const [compactMode, setCompactMode] = useState(false);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [purgeError, setPurgeError] = useState<string | null>(null);
 
   const completedTasks = tasks.filter((t) => t.completed);
 
   const handleClearCompleted = async () => {
     setIsClearing(true);
+    setPurgeError(null);
     try {
-      for (const t of completedTasks) {
-        await onDelete(t.id);
+      if (onPurgeCompleted) {
+        const success = await onPurgeCompleted();
+        if (!success) {
+          setPurgeError('Failed to purge completed tasks. Please try again.');
+          return;
+        }
+      } else {
+        for (const t of completedTasks) {
+          await onDelete(t.id);
+        }
       }
       setConfirmClearOpen(false);
+    } catch {
+      setPurgeError('An unexpected error occurred during purge.');
     } finally {
       setIsClearing(false);
     }
@@ -209,6 +226,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ tasks, onDelete }) =
             </button>
           )}
         </div>
+
+        {purgeError && (
+          <div className="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+            {purgeError}
+          </div>
+        )}
       </div>
 
       {/* App Version Info Card */}
