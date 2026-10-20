@@ -300,3 +300,7 @@ npm start
 4. **Zod Schema Validation**: Eliminates unexpected fields, validates types, and bounds string lengths.
 5. **Rate Limiting**: Express rate limiters protect mutations (`POST`, `PATCH`, `DELETE`) against automated flooding.
 6. **Graceful Shutdown**: Catches `SIGINT` and `SIGTERM` to close existing HTTP connections cleanly and disconnect from MongoDB before exit.
+
+
+   <img width="1897" height="1002" alt="image" src="https://github.com/user-attachments/assets/8fee38cb-7814-4ec5-9f27-2ce6998eb38e" />
+
