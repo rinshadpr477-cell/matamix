@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Task } from '../types/task';
 import { taskService } from '../services/taskService';
 import { ApiError } from '../services/apiClient';
@@ -12,18 +12,33 @@ export function useTasks() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const isMountedRef = useRef<boolean>(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const fetchTasks = useCallback(async () => {
     setIsLoading(true);
     setFetchError(null);
     try {
       const data = await taskService.getTasks();
-      setTasks(data);
+      if (isMountedRef.current) {
+        setTasks(data);
+      }
     } catch (err: unknown) {
-      const message =
-        err instanceof ApiError ? err.message : 'Failed to fetch tasks from server.';
-      setFetchError(message);
+      if (isMountedRef.current) {
+        const message =
+          err instanceof ApiError ? err.message : 'Failed to fetch tasks from server.';
+        setFetchError(message);
+      }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -46,16 +61,22 @@ export function useTasks() {
     setActionError(null);
     try {
       const newTask = await taskService.createTask(trimmed);
-      // Prepend the new task to UI list only after successful backend response
-      setTasks((prev) => [newTask, ...prev]);
+      if (isMountedRef.current) {
+        // Prepend the new task to UI list only after successful backend response
+        setTasks((prev) => [newTask, ...prev]);
+      }
       return true;
     } catch (err: unknown) {
-      const message =
-        err instanceof ApiError ? err.message : 'Failed to create task.';
-      setActionError(message);
+      if (isMountedRef.current) {
+        const message =
+          err instanceof ApiError ? err.message : 'Failed to create task.';
+        setActionError(message);
+      }
       return false;
     } finally {
-      setIsCreating(false);
+      if (isMountedRef.current) {
+        setIsCreating(false);
+      }
     }
   };
 
@@ -67,20 +88,26 @@ export function useTasks() {
     setActionError(null);
     try {
       const updated = await taskService.toggleTask(id);
-      // Update UI only after successful response
-      setTasks((prev) =>
-        prev.map((task) => (task.id === id ? updated : task))
-      );
+      if (isMountedRef.current) {
+        // Update UI only after successful response
+        setTasks((prev) =>
+          prev.map((task) => (task.id === id ? updated : task))
+        );
+      }
     } catch (err: unknown) {
-      const message =
-        err instanceof ApiError ? err.message : 'Failed to update task status.';
-      setActionError(message);
+      if (isMountedRef.current) {
+        const message =
+          err instanceof ApiError ? err.message : 'Failed to update task status.';
+        setActionError(message);
+      }
     } finally {
-      setUpdatingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      if (isMountedRef.current) {
+        setUpdatingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }
     }
   };
 
@@ -91,18 +118,24 @@ export function useTasks() {
     setActionError(null);
     try {
       await taskService.deleteTask(id);
-      // Remove from UI only after successful response
-      setTasks((prev) => prev.filter((task) => task.id !== id));
+      if (isMountedRef.current) {
+        // Remove from UI only after successful response
+        setTasks((prev) => prev.filter((task) => task.id !== id));
+      }
     } catch (err: unknown) {
-      const message =
-        err instanceof ApiError ? err.message : 'Failed to delete task.';
-      setActionError(message);
+      if (isMountedRef.current) {
+        const message =
+          err instanceof ApiError ? err.message : 'Failed to delete task.';
+        setActionError(message);
+      }
     } finally {
-      setDeletingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      if (isMountedRef.current) {
+        setDeletingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }
     }
   };
 

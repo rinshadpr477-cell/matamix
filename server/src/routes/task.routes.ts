@@ -1,17 +1,22 @@
 import { Router } from 'express';
 import { taskController } from '../controllers/task.controller';
-import { validateBody, validateParams } from '../middleware/validateRequest';
+import { validateBody, validateParams, validateQuery } from '../middleware/validateRequest';
 import {
   createTaskSchema,
   taskIdParamSchema,
   updateTaskSchema,
+  getTasksQuerySchema,
 } from '../validators/task.validator';
 import { mutationLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
-// GET /api/tasks - Retrieve all tasks
-router.get('/', (req, res, next) => taskController.getTasks(req, res, next));
+// GET /api/tasks - Retrieve all tasks (with bounded limits and pagination)
+router.get(
+  '/',
+  validateQuery(getTasksQuerySchema),
+  (req, res, next) => taskController.getTasks(req, res, next)
+);
 
 // POST /api/tasks - Create a new task
 router.post(

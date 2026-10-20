@@ -60,7 +60,6 @@ describe('App Full Integration Flow', () => {
       expect(screen.getByText('Review Pull Request')).toBeInTheDocument();
     });
 
-    // Check stats
     expect(screen.getByText('Total Tasks')).toBeInTheDocument();
   });
 
@@ -92,6 +91,97 @@ describe('App Full Integration Flow', () => {
     });
   });
 
+  it('toggles task completion and updates the UI only after successful API response', async () => {
+    const user = userEvent.setup();
+    const initialTask = {
+      id: 'task-10',
+      title: 'Config rate limiting',
+      completed: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    vi.mocked(taskService.getTasks).mockResolvedValueOnce([initialTask]);
+    vi.mocked(taskService.toggleTask).mockResolvedValueOnce({
+      ...initialTask,
+      completed: true,
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Config rate limiting')).toBeInTheDocument();
+    });
+
+    const checkbox = screen.getByRole('checkbox');
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
+
+    await user.click(checkbox);
+
+    await waitFor(() => {
+      expect(screen.getByRole('checkbox')).toHaveAttribute('aria-checked', 'true');
+    });
+  });
+
+  it('deletes a task and removes it from the UI upon successful API response', async () => {
+    const user = userEvent.setup();
+    const taskToDelete = {
+      id: 'task-del',
+      title: 'Obsolete task',
+      completed: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    vi.mocked(taskService.getTasks).mockResolvedValueOnce([taskToDelete]);
+    vi.mocked(taskService.deleteTask).mockResolvedValueOnce({
+      id: 'task-del',
+      message: 'Task deleted successfully',
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Obsolete task')).toBeInTheDocument();
+    });
+
+    const deleteBtn = screen.getByRole('button', { name: /Delete task/i });
+    await user.click(deleteBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Obsolete task')).not.toBeInTheDocument();
+    });
+  });
+
+  it('displays action error banner when task mutation fails', async () => {
+    const user = userEvent.setup();
+    const taskItem = {
+      id: 'task-fail',
+      title: 'Failing toggle',
+      completed: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    vi.mocked(taskService.getTasks).mockResolvedValueOnce([taskItem]);
+    vi.mocked(taskService.toggleTask).mockRejectedValueOnce(
+      new ApiError('Failed to update task status.', 500)
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failing toggle')).toBeInTheDocument();
+    });
+
+    const checkbox = screen.getByRole('checkbox');
+    await user.click(checkbox);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to update task status./i)).toBeInTheDocument();
+    });
+  });
+
   it('displays error banner and retry option when API fetch fails', async () => {
     const user = userEvent.setup();
     vi.mocked(taskService.getTasks).mockRejectedValueOnce(
@@ -105,7 +195,6 @@ describe('App Full Integration Flow', () => {
       expect(screen.getByRole('button', { name: /Retry Connection/i })).toBeInTheDocument();
     });
 
-    // Mock successful retry
     vi.mocked(taskService.getTasks).mockResolvedValueOnce([
       {
         id: '99',

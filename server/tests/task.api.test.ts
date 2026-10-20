@@ -17,7 +17,6 @@ describe('Task Manager REST API', () => {
     });
 
     it('should return all existing tasks sorted by newest first', async () => {
-      // Create test tasks
       const task1 = await TaskModel.create({
         title: 'Task 1',
         completed: false,
@@ -41,6 +40,32 @@ describe('Task Manager REST API', () => {
       expect(response.body.data[1].title).toBe('Task 1');
       expect(response.body.data[1].completed).toBe(false);
     });
+
+    it('should support pagination with limit and skip query parameters', async () => {
+      for (let i = 1; i <= 5; i++) {
+        await TaskModel.create({
+          title: `Task ${i}`,
+          completed: false,
+          createdAt: new Date(Date.now() + i * 1000),
+        });
+      }
+
+      // Fetch with limit 2, skip 1
+      const response = await request(app).get('/api/tasks?limit=2&skip=1');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveLength(2);
+      expect(response.body.data[0].title).toBe('Task 4');
+      expect(response.body.data[1].title).toBe('Task 3');
+    });
+
+    it('should reject invalid query parameters with 400 Bad Request', async () => {
+      const response = await request(app).get('/api/tasks?limit=0');
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toBe('Invalid query parameters');
+    });
   });
 
   describe('POST /api/tasks', () => {
@@ -56,7 +81,6 @@ describe('Task Manager REST API', () => {
       expect(response.body.data.id).toBeDefined();
       expect(response.body.data.createdAt).toBeDefined();
 
-      // Verify task in database
       const dbTask = await TaskModel.findById(response.body.data.id);
       expect(dbTask).not.toBeNull();
       expect(dbTask?.title).toBe('Buy fresh groceries');
@@ -93,6 +117,16 @@ describe('Task Manager REST API', () => {
       expect(response.body.success).toBe(false);
       expect(response.body.error).toContain('cannot exceed 200 characters');
     });
+
+    it('should reject unexpected fields (mass assignment prevention) with 400 Bad Request', async () => {
+      const response = await request(app)
+        .post('/api/tasks')
+        .send({ title: 'Valid Task', admin: true, role: 'superuser' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toBe('Validation failed');
+    });
   });
 
   describe('PATCH /api/tasks/:id', () => {
@@ -109,6 +143,16 @@ describe('Task Manager REST API', () => {
 
       const updated = await TaskModel.findById(task._id);
       expect(updated?.completed).toBe(true);
+    });
+
+    it('should handle completely bodyless PATCH request gracefully and toggle status', async () => {
+      const task = await TaskModel.create({ title: 'Bodyless Toggle', completed: false });
+
+      const response = await request(app).patch(`/api/tasks/${task._id.toString()}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.completed).toBe(true);
     });
 
     it('should toggle completed from true to false', async () => {
@@ -135,6 +179,18 @@ describe('Task Manager REST API', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.data.completed).toBe(true);
+    });
+
+    it('should reject unexpected fields on PATCH with 400 Bad Request', async () => {
+      const task = await TaskModel.create({ title: 'Guard test', completed: false });
+
+      const response = await request(app)
+        .patch(`/api/tasks/${task._id.toString()}`)
+        .send({ title: 'Attempted Title Modification', extra: 'not allowed' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toBe('Validation failed');
     });
 
     it('should return 404 if the task does not exist', async () => {
@@ -170,7 +226,6 @@ describe('Task Manager REST API', () => {
       expect(response.body.data.id).toBe(task._id.toString());
       expect(response.body.data.message).toBe('Task deleted successfully');
 
-      // Verify deletion in database
       const dbTask = await TaskModel.findById(task._id);
       expect(dbTask).toBeNull();
     });
@@ -205,6 +260,26 @@ describe('Task Manager REST API', () => {
       expect(response.status).toBe(200);
       expect(response.body.status).toBe('healthy');
       expect(response.body.database.status).toBe('connected');
+    });
+
+    it('should return 403 Forbidden for disallowed CORS origin', async () => {
+      const response = await request(app)
+        .get('/api/tasks')
+        .set('Origin', 'http://malicious-site.com');
+
+      expect(response.status).toBe(403);
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toContain('not permitted by CORS policy');
+    });
+
+    it('should allow whitelisted CORS origin with 200 OK', async () => {
+      const response = await request(app)
+        .get('/api/tasks')
+        .set('Origin', 'http://localhost:5173');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.headers['access-control-allow-origin']).toBe('http://localhost:5173');
     });
   });
 });

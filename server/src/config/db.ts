@@ -13,6 +13,9 @@ export async function connectDB(uri?: string): Promise<typeof mongoose> {
   try {
     const conn = await mongoose.connect(targetUri, {
       serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 50,
+      minPoolSize: 5,
     });
     isConnected = true;
     console.log(`✅ MongoDB connected successfully to: ${conn.connection.host}/${conn.connection.name}`);

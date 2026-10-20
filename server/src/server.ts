@@ -53,6 +53,7 @@ async function bootstrap() {
     // Catch unhandled rejections and exceptions
     process.on('unhandledRejection', (reason) => {
       console.error('💥 Unhandled Rejection:', reason);
+      void gracefulShutdown('unhandledRejection');
     });
 
     process.on('uncaughtException', (error) => {

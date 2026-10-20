@@ -12,6 +12,7 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.string().default('900000').transform((val) => parseInt(val, 10)),
   RATE_LIMIT_MAX_REQUESTS: z.string().default('200').transform((val) => parseInt(val, 10)),
   MUTATION_RATE_LIMIT_MAX_REQUESTS: z.string().default('100').transform((val) => parseInt(val, 10)),
+  TRUST_PROXY: z.string().default('1').transform((val) => parseInt(val, 10)),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

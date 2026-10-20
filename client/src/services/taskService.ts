@@ -1,7 +1,7 @@
 import { request } from './apiClient';
 import { Task } from '../types/task';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
 
 export const taskService = {
   /**

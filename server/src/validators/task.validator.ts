@@ -27,6 +27,14 @@ export const updateTaskSchema = z
   })
   .strict();
 
+export const getTasksQuerySchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(200).default(100),
+    skip: z.coerce.number().int().min(0).default(0),
+  })
+  .strict();
+
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 export type TaskIdParam = z.infer<typeof taskIdParamSchema>;
+export type GetTasksQueryInput = z.infer<typeof getTasksQuerySchema>;

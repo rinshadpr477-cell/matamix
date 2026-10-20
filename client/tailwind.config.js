@@ -7,26 +7,42 @@ export default {
   theme: {
     extend: {
       colors: {
-        apple: {
-          blue: '#0a84ff',
-          blueHover: '#0071e3',
-          darkBg: '#090a0f',
-          surface: '#12141a',
-          surfaceMuted: '#181b24',
-          border: 'rgba(255, 255, 255, 0.08)',
+        brand: {
+          primary: '#004e9f',
+          primaryHover: '#003d7c',
+          success: '#34A853',
+          canvas: '#f9f9ff',
         },
+        primary: {
+          DEFAULT: '#004e9f',
+          hover: '#003d7c',
+          50: '#eff6ff',
+          100: '#dbeafe',
+          500: '#004e9f',
+          600: '#003d7c',
+          700: '#002c59',
+        },
+        success: {
+          DEFAULT: '#34A853',
+          50: '#f0fdf4',
+          100: '#dcfce7',
+          500: '#34A853',
+          600: '#2e9549',
+        },
+        canvas: '#f9f9ff',
       },
       fontFamily: {
         sans: [
-          '-apple-system',
-          'BlinkMacSystemFont',
-          '"SF Pro Text"',
-          '"SF Pro Display"',
           '"Plus Jakarta Sans"',
           '"Inter"',
+          '-apple-system',
+          'BlinkMacSystemFont',
           'system-ui',
           'sans-serif',
         ],
+      },
+      boxShadow: {
+        card: '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)',
       },
     },
   },

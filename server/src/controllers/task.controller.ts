@@ -8,12 +8,14 @@ export class TaskController {
    * Fetch all tasks from MongoDB
    */
   async getTasks(
-    _req: Request,
+    req: Request,
     res: Response<ApiResponse<TaskResponseDTO[]>>,
     next: NextFunction
   ): Promise<void> {
     try {
-      const tasks = await taskService.getAllTasks();
+      const limit = req.query.limit !== undefined ? Number(req.query.limit) : 100;
+      const skip = req.query.skip !== undefined ? Number(req.query.skip) : 0;
+      const tasks = await taskService.getAllTasks(limit, skip);
       res.status(200).json({
         success: true,
         data: tasks,

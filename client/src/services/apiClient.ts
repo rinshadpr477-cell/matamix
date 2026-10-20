@@ -22,6 +22,15 @@ export async function request<T>(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+  // Link caller signal if provided so component unmount or manual abort propagates
+  if (options.signal) {
+    if (options.signal.aborted) {
+      controller.abort();
+    } else {
+      options.signal.addEventListener('abort', () => controller.abort(), { once: true });
+    }
+  }
+
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
